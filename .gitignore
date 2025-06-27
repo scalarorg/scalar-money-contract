@@ -1,0 +1,23 @@
+# directories
+cache
+coverage
+node_modules
+out
+
+# files
+*.env*
+*.env.test*
+*.log
+.DS_Store
+.pnp.*
+lcov.info
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# broadcasts
+!broadcast
+broadcast/*
+broadcast/*/31337/
+broadcast/*/1337/
+broadcast/*/11155111/
