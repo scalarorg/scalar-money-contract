@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.0 <0.9.0;
 
-import { Script } from "forge-std/src/Script.sol";
+import { Script } from "forge-std/Script.sol";
 
 abstract contract BaseScript is Script {
     address internal broadcaster;

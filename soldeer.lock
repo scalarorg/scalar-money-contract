@@ -1,0 +1,29 @@
+[[dependencies]]
+name = "BoringSolidity"
+version = "1.0.0"
+git = "https://github.com/Abracadabra-money/BoringSolidity.git"
+rev = "16e10d3faa1a5eda32668619b6c560e925d85255"
+
+[[dependencies]]
+name = "abracadabra"
+version = "0.0.1"
+git = "https://github.com/Abracadabra-money/abracadabra-money-contracts.git"
+rev = "6021168e86918322ef3405f87ef065c68dc2f7de"
+
+[[dependencies]]
+name = "forge-std"
+version = "1.9.5"
+git = "https://github.com/foundry-rs/forge-std.git"
+rev = "b93cf4bc34ff214c099dc970b153f85ade8c9f66"
+
+[[dependencies]]
+name = "openzeppelin-contracts"
+version = "5.0.2"
+git = "https://github.com/OpenZeppelin/openzeppelin-contracts.git"
+rev = "dbb6104ce834628e473d2173bbc9d47f81a9eec3"
+
+[[dependencies]]
+name = "solmate"
+version = "6.2.0"
+git = "https://github.com/transmissions11/solmate.git"
+rev = "97bdb2003b70382996a79a406813f76417b1cf90"

@@ -24,6 +24,8 @@
   ],
   "private": true,
   "scripts": {
+    "postinstall": "forge soldeer install",
+    "remappings": "forge remappings > remappings.txt",
     "clean": "rm -rf cache out",
     "build": "forge build",
     "lint": "bun run lint:sol && bun run prettier:check",
