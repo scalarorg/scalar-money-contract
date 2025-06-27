@@ -21,3 +21,5 @@ broadcast/*
 broadcast/*/31337/
 broadcast/*/1337/
 broadcast/*/11155111/
+
+dependencies

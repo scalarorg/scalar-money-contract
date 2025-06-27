@@ -1,2 +1,4 @@
 @openzeppelin/=node_modules/@openzeppelin/
 forge-std/=node_modules/forge-std/
+@BoringSolidity/=node_modules/@Boringsolidity/contracts/
+@abracadabra/=node_modules/@abracadabra/src/

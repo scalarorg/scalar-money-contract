@@ -14,7 +14,7 @@ script = "script"
 solc = "0.8.9"
 src = "src"
 test = "test"
-libs = ["node_modules", "lib"]
+libs = ["node_modules", "dependencies"]
 
 [profile.ci]
 fuzz = { runs = 10_000 }
@@ -29,6 +29,12 @@ number_underscore = "thousands"
 quote_style = "double"
 tab_width = 4
 wrap_comments = true
+
+[dependencies]
+"forge-std" = { version = "1.9.5", git = "https://github.com/foundry-rs/forge-std.git", rev = "b93cf4bc34ff214c099dc970b153f85ade8c9f66" }
+"solmate" = { version = "6.2.0", git = "https://github.com/transmissions11/solmate.git", rev = "97bdb2003b70382996a79a406813f76417b1cf90" }
+"openzeppelin-contracts" = { version = "5.0.2", git = "https://github.com/OpenZeppelin/openzeppelin-contracts.git", rev = "dbb6104ce834628e473d2173bbc9d47f81a9eec3" }
+"BoringSolidity" = { version = "1.0.0", git = "https://github.com/Abracadabra-money/BoringSolidity.git", rev = "16e10d3faa1a5eda32668619b6c560e925d85255" }
 
 [etherscan]
 mainnet = { key = "${API_KEY_ETHERSCAN}" }
