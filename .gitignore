@@ -5,7 +5,8 @@ node_modules
 out
 
 # files
-*.env*
+.env
+*.env
 *.env.test*
 *.log
 .DS_Store

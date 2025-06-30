@@ -2,16 +2,12 @@
 pragma solidity >=0.8.0;
 
 import { DegenBox } from "@abracadabra/DegenBox.sol";
-
 import { IBentoBoxV1 } from "@abracadabra/interfaces/IBentoBoxV1.sol";
-
 import { CauldronV4 } from "@abracadabra/cauldrons/CauldronV4.sol";
 import { FixedPriceOracle } from "@abracadabra/oracles/FixedPriceOracle.sol";
 import { ProxyOracle } from "@abracadabra/oracles/ProxyOracle.sol";
 import { MarketLens } from "@abracadabra/lenses/MarketLens.sol";
-
 import { IERC20 } from "@BoringSolidity/ERC20.sol";
-
 import { BaseScript } from "./Base.s.sol";
 import { StableCoin } from "../src/tokens/StableCoin.sol";
 import { ERC20 } from "../src/tokens/ERC20.sol";
