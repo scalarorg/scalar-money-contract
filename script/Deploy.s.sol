@@ -54,13 +54,22 @@ contract ScalarSystemDeployScript is BaseScript {
         deployed = true;
     }
 
-    function run() external {
-        deploy();
-    }
-
-    function deploy() public onlyOnce {
-        vm.startBroadcast();
-
+    function run()
+        external
+        broadcast
+        returns (
+            StableCoin,
+            ERC20,
+            WETH,
+            DegenBox,
+            CauldronV4,
+            FixedPriceOracle,
+            ProxyOracle,
+            CauldronFactory,
+            address,
+            MarketLens
+        )
+    {
         // 1. Deploy tokens
         deployTokens();
 
@@ -82,7 +91,18 @@ contract ScalarSystemDeployScript is BaseScript {
         // 7. Deploy MarketLens
         deployMarketLens();
 
-        vm.stopBroadcast();
+        return (
+            stableCoin,
+            sbtc,
+            weth,
+            degenBox,
+            masterCauldron,
+            oracle,
+            oracleProxy,
+            cauldronFactory,
+            sBTCMarket,
+            marketLens
+        );
     }
 
     function deployTokens() internal {
@@ -174,46 +194,5 @@ contract ScalarSystemDeployScript is BaseScript {
 
         marketLens = new MarketLens();
         emit MarketLensDeployed(address(marketLens));
-    }
-
-    // Helper function to get all deployed addresses
-    function getDeployedAddresses()
-        external
-        view
-        returns (
-            address stableCoinAddr,
-            address sbtcAddr,
-            address wethAddr,
-            address degenBoxAddr,
-            address masterCauldronAddr,
-            address oracleAddr,
-            address oracleProxyAddr,
-            address cauldronFactoryAddr,
-            address sBTCMarketAddr,
-            address marketLensAddr
-        )
-    {
-        return (
-            address(stableCoin),
-            address(sbtc),
-            address(weth),
-            address(degenBox),
-            address(masterCauldron),
-            address(oracle),
-            address(oracleProxy),
-            address(cauldronFactory),
-            sBTCMarket,
-            address(marketLens)
-        );
-    }
-
-    // Function to verify deployment integrity
-    function verifyDeployment() external view returns (bool) {
-        return (
-            address(stableCoin) != address(0) && address(sbtc) != address(0) && address(weth) != address(0)
-                && address(degenBox) != address(0) && address(masterCauldron) != address(0) && address(oracle) != address(0)
-                && address(oracleProxy) != address(0) && address(cauldronFactory) != address(0) && sBTCMarket != address(0)
-                && address(marketLens) != address(0)
-        );
     }
 }

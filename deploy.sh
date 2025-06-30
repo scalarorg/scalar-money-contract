@@ -18,10 +18,10 @@ fi
 check_env() {
     local missing=0
 
-    if [ -z "$PRIVATE_KEY" ]; then
-        echo -e "${RED}Error: PRIVATE_KEY is not set${NC}"
-        missing=1
-    fi
+    # if [ -z "$PRIVATE_KEY" ]; then
+    #     echo -e "${RED}Error: PRIVATE_KEY is not set${NC}"
+    #     missing=1
+    # fi
 
     if [ -z "$API_KEY_ETHERSCAN" ]; then
         echo -e "${RED}Error: API_KEY_ETHERSCAN is not set${NC}"
@@ -33,9 +33,16 @@ check_env() {
         missing=1
     fi
 
+    if [ -z "$KEYSTORE_ACCOUNT" ]; then
+        echo -e "${RED}Error: ACCOUNT is not set${NC}"
+        missing=1
+    fi
+    
     if [ $missing -eq 1 ]; then
         exit 1
     fi
+
+
 }
 
 # Function to set network-specific configurations
@@ -70,14 +77,14 @@ info() {
 
 # Function to deploy the contract
 deploy() {
-    echo -e "${GREEN}Deploying DeployScalar contract...${NC}"
+    echo -e "${GREEN}Deploying contracts...${NC}"
     # Build Forge script command
-    FORGE_CMD="forge script script/DeployScalar.s.sol \
+    FORGE_CMD="forge script script/Deploy.s.sol \
         --chain-id $CHAIN_ID \
         --rpc-url $NETWORK \
-        --private-key $PRIVATE_KEY \
-        --broadcast 
-        --verify"
+        --broadcast \
+        --verify \
+        --account $KEYSTORE_ACCOUNT"
         
     # Execute the command
     echo "Executing: $FORGE_CMD"

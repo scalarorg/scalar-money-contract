@@ -26,7 +26,7 @@ test-match:
 
 .PHONY: bsctestnet sepolia
 bsctestnet:
-	./script/deploy.sh bsctestnet
+	./deploy.sh bsctestnet
 sepolia:
-	./script/deploy.sh sepolia
+	./deploy.sh sepolia
 
