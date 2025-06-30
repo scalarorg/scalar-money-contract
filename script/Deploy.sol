@@ -1,94 +1,219 @@
-// // SPDX-License-Identifier: UNLICENSED
-// pragma solidity >=0.8.0;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity >=0.8.0;
 
-// // import "./BaseScript.sol";
-// // import "/tokens/ScalarCoin.sol";
-// // import "/tokens/WETH.sol";
-// // import "/tokens/sBTC.sol";
-// // import "/DegenBox.sol";
-// // import "/cauldrons/CauldronV4.sol";
-// // import "/oracles/FixedPriceOracle.sol";
-// // import "/oracles/ProxyOracle.sol";
-// // import "/factories/CauldronFactory.sol";
-// // import "/lenses/MarketLens.sol";
+import { DegenBox } from "@abracadabra/DegenBox.sol";
 
-// import { BaseScript } from "./Base.s.sol";
-// import { StableCoin } from "../src/tokens/StableCoin.sol";
-// import { ERC20 } from "../src/tokens/ERC20.sol";
-// import { WETH } from "../src/tokens/WETH.sol";
-// import { DegenBox } from "@abracadabra/DegenBox.sol";
-// import { CauldronV4 } from "@abracadabra/cauldrons/CauldronV4.sol";
-// import { FixedPriceOracle } from "@abracadabra/oracles/FixedPriceOracle.sol";
-// import { ProxyOracle } from "@abracadabra/oracles/ProxyOracle.sol";
-// import { CauldronFactory } from "@abracadabra/contracts/factories/CauldronFactory.sol";
-// import { MarketLens } from "@abracadabra/contracts/lenses/MarketLens.sol";
+import { IBentoBoxV1 } from "@abracadabra/interfaces/IBentoBoxV1.sol";
 
-// contract ScalarSystemDeployScript is BaseScript {
-//   function deploy() public {
-//     vm.startBroadcast();
+import { CauldronV4 } from "@abracadabra/cauldrons/CauldronV4.sol";
+import { FixedPriceOracle } from "@abracadabra/oracles/FixedPriceOracle.sol";
+import { ProxyOracle } from "@abracadabra/oracles/ProxyOracle.sol";
+import { MarketLens } from "@abracadabra/lenses/MarketLens.sol";
 
-//     // 1. Deploy ScalarUSD
-//     StableCoin token = new StableCoin("ScalarUSD", "sUSD", 18);
+import { IERC20 } from "@BoringSolidity/ERC20.sol";
 
-//     // 2. Deploy sBTC
-//     ERC20 sbtc = new ERC20("sBTC", "sBTC", 8);
+import { BaseScript } from "./Base.s.sol";
+import { StableCoin } from "../src/tokens/StableCoin.sol";
+import { ERC20 } from "../src/tokens/ERC20.sol";
+import { WETH } from "../src/tokens/WETH.sol";
+import { CauldronFactory } from "../src/cauldron/CauldronFactory.sol";
 
-//     // 3. Deploy WETH
-//     WETH weth = new WETH();
+contract ScalarSystemDeployScript is BaseScript {
+    // Events for better deployment tracking
+    event TokenDeployed(string name, address indexed token, string symbol, uint8 decimals);
+    event DegenBoxDeployed(address indexed degenBox, address indexed masterCauldron);
+    event OracleDeployed(address indexed oracle, address indexed proxy, string description);
+    event CauldronFactoryDeployed(address indexed factory, address indexed masterContract);
+    event MarketDeployed(address indexed market, address indexed collateral, address indexed oracle);
+    event MarketLensDeployed(address indexed lens);
 
-//     // 4. Deploy DegenBox
-//     DegenBox degenBox = new DegenBox(address(weth));
+    // Market configuration constants
+    uint64 constant INTEREST_PER_SECOND = uint64((uint256(600) * 316_880_878) / 100);
+    uint256 constant LIQUIDATION_MULTIPLIER = uint256(600) * 1e1 + 1e5;
+    uint256 constant COLLATERIZATION_RATE = uint256(8000) * 1e1;
+    uint256 constant BORROW_OPENING_FEE = uint256(50) * 1e1;
 
-//     // 5. Deploy CauldronV4
-//     CauldronV4 cauldronV4 = new CauldronV4(address(degenBox), address(token));
+    // Deployed contract addresses
+    StableCoin public stableCoin;
+    ERC20 public sbtc;
+    WETH public weth;
+    DegenBox public degenBox;
+    CauldronV4 public masterCauldron;
+    FixedPriceOracle public oracle;
+    ProxyOracle public oracleProxy;
+    CauldronFactory public cauldronFactory;
+    address public sBTCMarket;
+    MarketLens public marketLens;
 
-//     // 6. Deploy FixedPriceOracle
-//     FixedPriceOracle oracle = new FixedPriceOracle("sBTC/USD", 17471700000000, 8);
+    // Deployment state tracking
+    bool public deployed;
 
-//     // 7. Deploy ProxyOracle and set implementation
-//     ProxyOracle oracleProxy = new ProxyOracle();
-//     oracleProxy.changeOracleImplementation(address(oracle));
+    modifier onlyOnce() {
+        require(!deployed, "Already deployed");
+        _;
+        deployed = true;
+    }
 
-//     // 8. Deploy CauldronFactory
-//     CauldronFactory cauldronFactory = new CauldronFactory(address(cauldronV4));
+    function run() external {
+        deploy();
+    }
 
-//     // 9. Encode initData and clone CauldronV4 for sBTC market
-//     bytes memory oracleData = "";
-//     uint64 INTEREST_PER_SECOND = uint64((uint256(600) * 316880878) / 100);
-//     uint256 LIQUIDATION_MULTIPLIER = uint256(600) * 1e1 + 1e5;
-//     uint256 COLLATERIZATION_RATE = uint256(8000) * 1e1;
-//     uint256 BORROW_OPENING_FEE = uint256(50) * 1e1;
+    function deploy() public onlyOnce {
+        vm.startBroadcast();
 
-//     bytes memory initData = abi.encode(
-//       address(sbtc),
-//       address(oracleProxy),
-//       oracleData,
-//       INTEREST_PER_SECOND,
-//       LIQUIDATION_MULTIPLIER,
-//       COLLATERIZATION_RATE,
-//       BORROW_OPENING_FEE
-//     );
+        // 1. Deploy tokens
+        deployTokens();
 
-//     address sBTCMarket = cauldronFactory.createCauldron(initData);
+        // 2. Deploy DegenBox and master cauldron
+        deployDegenBoxAndMasterCauldron();
 
-//     // 10. Whitelist master contract
-//     degenBox.whitelistMasterContract(address(cauldronV4), true);
+        // 3. Deploy Oracle
+        deployOracle();
 
-//     // 11. Approve tokens for DegenBox
-//     token.approve(address(degenBox), type(uint256).max);
-//     sbtc.approve(address(degenBox), type(uint256).max);
-//     weth.approve(address(degenBox), type(uint256).max);
+        // 4. Deploy CauldronFactory
+        deployCauldronFactory();
 
-//     // 12. Mint tokens to deployer
-//     sbtc.mint(msg.sender, 10_000 ether);
-//     token.mint(msg.sender, 3_000_000 ether);
+        // 5. Deploy sBTC market
+        deploySBTCMarket();
 
-//     // 13. Deposit SCL tokens to the market
-//     degenBox.deposit(address(token), msg.sender, sBTCMarket, 3_000_000 ether, 0);
+        // 6. Approve tokens for DegenBox
+        approveTokensForDegenBox();
 
-//     // 14. Deploy MarketLens
-//     MarketLens marketLens = new MarketLens();
+        // 7. Deploy MarketLens
+        deployMarketLens();
 
-//     vm.stopBroadcast();
-//   }
-// }
+        vm.stopBroadcast();
+    }
+
+    function deployTokens() internal {
+        require(address(stableCoin) == address(0), "Tokens already deployed");
+
+        // Deploy ScalarUSD
+        stableCoin = new StableCoin("ScalarUSD", "sUSD", 18);
+        emit TokenDeployed("ScalarUSD", address(stableCoin), "sUSD", 18);
+
+        // Deploy sBTC
+        sbtc = new ERC20("sBTC", "sBTC", 8);
+        emit TokenDeployed("sBTC", address(sbtc), "sBTC", 8);
+
+        // Deploy WETH
+        weth = new WETH();
+        emit TokenDeployed("WETH", address(weth), "WETH", 18);
+    }
+
+    function deployDegenBoxAndMasterCauldron() internal {
+        require(address(degenBox) == address(0), "DegenBox already deployed");
+        require(address(stableCoin) != address(0), "Tokens must be deployed first");
+
+        // Deploy DegenBox
+        degenBox = new DegenBox(IERC20(address(weth)));
+
+        // Deploy Master CauldronV4
+        masterCauldron = new CauldronV4(IBentoBoxV1(address(degenBox)), IERC20(address(stableCoin)), msg.sender);
+
+        // Whitelist master contract
+        degenBox.whitelistMasterContract(address(masterCauldron), true);
+
+        emit DegenBoxDeployed(address(degenBox), address(masterCauldron));
+    }
+
+    function deployOracle() internal {
+        require(address(oracle) == address(0), "Oracle already deployed");
+
+        // Deploy FixedPriceOracle
+        oracle = new FixedPriceOracle("sBTC/sUSD", 100_000 ether, 18);
+
+        // Deploy ProxyOracle
+        oracleProxy = new ProxyOracle();
+        oracleProxy.changeOracleImplementation(oracle);
+
+        emit OracleDeployed(address(oracle), address(oracleProxy), "sBTC/sUSD Fixed Price Oracle");
+    }
+
+    function deployCauldronFactory() internal {
+        require(address(cauldronFactory) == address(0), "CauldronFactory already deployed");
+        require(address(masterCauldron) != address(0), "Master cauldron must be deployed first");
+
+        cauldronFactory = new CauldronFactory(address(masterCauldron));
+        emit CauldronFactoryDeployed(address(cauldronFactory), address(masterCauldron));
+    }
+
+    function deploySBTCMarket() internal {
+        require(sBTCMarket == address(0), "sBTC market already deployed");
+        require(address(cauldronFactory) != address(0), "CauldronFactory must be deployed first");
+        require(address(oracleProxy) != address(0), "Oracle must be deployed first");
+
+        bytes memory oracleData = "";
+
+        bytes memory initData = abi.encode(
+            address(sbtc),
+            address(oracleProxy),
+            oracleData,
+            INTEREST_PER_SECOND,
+            LIQUIDATION_MULTIPLIER,
+            COLLATERIZATION_RATE,
+            BORROW_OPENING_FEE
+        );
+
+        sBTCMarket = cauldronFactory.createCauldron(initData);
+
+        emit MarketDeployed(sBTCMarket, address(sbtc), address(oracleProxy));
+    }
+
+    function approveTokensForDegenBox() internal {
+        require(address(degenBox) != address(0), "DegenBox must be deployed first");
+        require(address(stableCoin) != address(0), "Tokens must be deployed first");
+
+        stableCoin.approve(address(degenBox), type(uint256).max);
+        sbtc.approve(address(degenBox), type(uint256).max);
+        weth.approve(address(degenBox), type(uint256).max);
+    }
+
+    function deployMarketLens() internal {
+        require(address(marketLens) == address(0), "MarketLens already deployed");
+
+        marketLens = new MarketLens();
+        emit MarketLensDeployed(address(marketLens));
+    }
+
+    // Helper function to get all deployed addresses
+    function getDeployedAddresses()
+        external
+        view
+        returns (
+            address stableCoinAddr,
+            address sbtcAddr,
+            address wethAddr,
+            address degenBoxAddr,
+            address masterCauldronAddr,
+            address oracleAddr,
+            address oracleProxyAddr,
+            address cauldronFactoryAddr,
+            address sBTCMarketAddr,
+            address marketLensAddr
+        )
+    {
+        return (
+            address(stableCoin),
+            address(sbtc),
+            address(weth),
+            address(degenBox),
+            address(masterCauldron),
+            address(oracle),
+            address(oracleProxy),
+            address(cauldronFactory),
+            sBTCMarket,
+            address(marketLens)
+        );
+    }
+
+    // Function to verify deployment integrity
+    function verifyDeployment() external view returns (bool) {
+        return (
+            address(stableCoin) != address(0) && address(sbtc) != address(0) && address(weth) != address(0)
+                && address(degenBox) != address(0) && address(masterCauldron) != address(0) && address(oracle) != address(0)
+                && address(oracleProxy) != address(0) && address(cauldronFactory) != address(0) && sBTCMarket != address(0)
+                && address(marketLens) != address(0)
+        );
+    }
+}
