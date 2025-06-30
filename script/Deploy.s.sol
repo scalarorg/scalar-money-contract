@@ -23,13 +23,14 @@ contract ScalarSystemDeployScript is BaseScript {
     event MarketDeployed(address indexed market, address indexed collateral, address indexed oracle);
     event MarketLensDeployed(address indexed lens);
 
-    // Market configuration constants
-    uint64 constant INTEREST_PER_SECOND = uint64((uint256(600) * 316_880_878) / 100);
-    uint256 constant LIQUIDATION_MULTIPLIER = uint256(600) * 1e1 + 1e5;
-    uint256 constant COLLATERIZATION_RATE = uint256(8000) * 1e1;
-    uint256 constant BORROW_OPENING_FEE = uint256(50) * 1e1;
+    error AlreadyDeployed();
+    error NotDeployed();
 
-    // Deployed contract addresses
+    uint64 public constant INTEREST_PER_SECOND = uint64((uint256(600) * 316_880_878) / 100);
+    uint256 public constant LIQUIDATION_MULTIPLIER = uint256(600) * 1e1 + 1e5;
+    uint256 public constant COLLATERIZATION_RATE = uint256(8000) * 1e1;
+    uint256 public constant BORROW_OPENING_FEE = uint256(50) * 1e1;
+
     StableCoin public stableCoin;
     ERC20 public sbtc;
     WETH public weth;
@@ -45,7 +46,7 @@ contract ScalarSystemDeployScript is BaseScript {
     bool public deployed;
 
     modifier onlyOnce() {
-        require(!deployed, "Already deployed");
+        if (deployed) revert AlreadyDeployed();
         _;
         deployed = true;
     }
@@ -102,7 +103,7 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function deployTokens() internal {
-        require(address(stableCoin) == address(0), "Tokens already deployed");
+        if (address(stableCoin) != address(0)) revert AlreadyDeployed();
 
         // Deploy ScalarUSD
         stableCoin = new StableCoin("ScalarUSD", "sUSD", 18);
@@ -118,8 +119,8 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function deployDegenBoxAndMasterCauldron() internal {
-        require(address(degenBox) == address(0), "DegenBox already deployed");
-        require(address(stableCoin) != address(0), "Tokens must be deployed first");
+        if (address(degenBox) != address(0)) revert AlreadyDeployed();
+        if (address(stableCoin) == address(0)) revert NotDeployed();
 
         // Deploy DegenBox
         degenBox = new DegenBox(IERC20(address(weth)));
@@ -134,10 +135,11 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function deployOracle() internal {
-        require(address(oracle) == address(0), "Oracle already deployed");
+        if (address(oracle) != address(0)) revert AlreadyDeployed();
 
-        // Deploy FixedPriceOracle
-        oracle = new FixedPriceOracle("sBTC/sUSD", 100_000 ether, 18);
+        // Deploy FixedPriceOracle: 1 USD = ? SBTC
+        // 1 USD = 1/100K * 1e18 = 1e13
+        oracle = new FixedPriceOracle("sBTC/sUSD", 1e13, 18);
 
         // Deploy ProxyOracle
         oracleProxy = new ProxyOracle();
@@ -147,17 +149,17 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function deployCauldronFactory() internal {
-        require(address(cauldronFactory) == address(0), "CauldronFactory already deployed");
-        require(address(masterCauldron) != address(0), "Master cauldron must be deployed first");
+        if (address(cauldronFactory) != address(0)) revert AlreadyDeployed();
+        if (address(masterCauldron) == address(0)) revert NotDeployed();
 
         cauldronFactory = new CauldronFactory(address(masterCauldron));
         emit CauldronFactoryDeployed(address(cauldronFactory), address(masterCauldron));
     }
 
     function deploySBTCMarket() internal {
-        require(sBTCMarket == address(0), "sBTC market already deployed");
-        require(address(cauldronFactory) != address(0), "CauldronFactory must be deployed first");
-        require(address(oracleProxy) != address(0), "Oracle must be deployed first");
+        if (sBTCMarket != address(0)) revert AlreadyDeployed();
+        if (address(cauldronFactory) == address(0)) revert NotDeployed();
+        if (address(oracleProxy) == address(0)) revert NotDeployed();
 
         bytes memory oracleData = "";
 
@@ -177,8 +179,8 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function approveTokensForDegenBox() internal {
-        require(address(degenBox) != address(0), "DegenBox must be deployed first");
-        require(address(stableCoin) != address(0), "Tokens must be deployed first");
+        if (address(degenBox) == address(0)) revert NotDeployed();
+        if (address(stableCoin) == address(0)) revert NotDeployed();
 
         stableCoin.approve(address(degenBox), type(uint256).max);
         sbtc.approve(address(degenBox), type(uint256).max);
@@ -186,7 +188,7 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function deployMarketLens() internal {
-        require(address(marketLens) == address(0), "MarketLens already deployed");
+        if (address(marketLens) != address(0)) revert AlreadyDeployed();
 
         marketLens = new MarketLens();
         emit MarketLensDeployed(address(marketLens));

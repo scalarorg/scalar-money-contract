@@ -37,12 +37,10 @@ check_env() {
         echo -e "${RED}Error: ACCOUNT is not set${NC}"
         missing=1
     fi
-    
+
     if [ $missing -eq 1 ]; then
         exit 1
     fi
-
-
 }
 
 # Function to set network-specific configurations
@@ -75,48 +73,46 @@ info() {
     echo -e "${GREEN}═══════════════════════════════════════════════════════════════════════════════════════${NC}\n"
 }
 
-# Function to deploy the contract
-deploy() {
-    echo -e "${GREEN}Deploying contracts...${NC}"
-    # Build Forge script command
-    FORGE_CMD="forge script script/Deploy.s.sol \
+run_forge_script() {
+    local script_name=$1
+    shift
+    local extra_args="$@"
+
+    echo -e "${GREEN}Running Forge script: $script_name${NC}"
+    FORGE_CMD="forge script script/$script_name \
         --chain-id $CHAIN_ID \
         --rpc-url $NETWORK \
         --broadcast \
         --verify \
-        --account $KEYSTORE_ACCOUNT"
-        
-    # Execute the command
+        --account $KEYSTORE_ACCOUNT $extra_args"
     echo "Executing: $FORGE_CMD"
 
-    read -p "Continue with deployment? (y/n): " confirm
+    read -p "Continue with script execution? (y/n): " confirm
     if [[ $confirm != "y" && $confirm != "Y" ]]; then
-        echo "Deployment cancelled"
+        echo "Script execution cancelled"
         exit 0
     fi
 
     eval $FORGE_CMD
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Deployment successful!${NC}"
+        echo -e "${GREEN}Script executed successfully!${NC}"
     else
-        echo -e "${RED}Deployment failed!${NC}"
+        echo -e "${RED}Script execution failed!${NC}"
         exit 1
     fi
 }
 
 # Main script execution
 main() {
-    # Parse arguments
     NETWORK=${1:-"sepolia"}
+    SCRIPT_NAME=${2:-"Deploy.s.sol"}
+    shift 2
+    EXTRA_ARGS="$@"
 
-    # Check required environment variables
     check_env
-    # Set network configuration
     set_network_config
-    # Display deployment information
     info
-    # Deploy the contract
-    deploy
+    run_forge_script "$SCRIPT_NAME" $EXTRA_ARGS
 }
 
 # Execute main function
