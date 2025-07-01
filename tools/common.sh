@@ -10,18 +10,13 @@ env_file=".env"
 if [ -f "$env_file" ]; then
     export $(cat "$env_file" | grep -v '#' | sed 's/\r$//' | xargs)
 else
-    echo "${env_file} file not found"
+    echo -e "${env_file} file not found"
     exit 1
 fi
 
 # Function to check required environment variables
 check_env() {
     local missing=0
-
-    # if [ -z "$PRIVATE_KEY" ]; then
-    #     echo -e "${RED}Error: PRIVATE_KEY is not set${NC}"
-    #     missing=1
-    # fi
 
     if [ -z "$API_KEY_ETHERSCAN" ]; then
         echo -e "${RED}Error: API_KEY_ETHERSCAN is not set${NC}"
@@ -85,6 +80,7 @@ run_forge_script() {
         --broadcast \
         --verify \
         --account $KEYSTORE_ACCOUNT $extra_args"
+        
     echo "Executing: $FORGE_CMD"
 
     read -p "Continue with script execution? (y/n): " confirm
@@ -101,19 +97,3 @@ run_forge_script() {
         exit 1
     fi
 }
-
-# Main script execution
-main() {
-    NETWORK=${1:-"sepolia"}
-    SCRIPT_NAME=${2:-"Deploy.s.sol"}
-    shift 2
-    EXTRA_ARGS="$@"
-
-    check_env
-    set_network_config
-    info
-    run_forge_script "$SCRIPT_NAME" $EXTRA_ARGS
-}
-
-# Execute main function
-main "$@"
