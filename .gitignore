@@ -7,6 +7,7 @@ out
 # files
 .env
 *.env
+*.env.local
 *.env.test*
 *.log
 .DS_Store

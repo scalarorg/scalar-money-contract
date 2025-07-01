@@ -8,6 +8,7 @@ NETWORK=${1:-"sepolia"}
 shift 1
 EXTRA_ARGS="$@"
 
+source_env
 check_env
 set_network_config
 info

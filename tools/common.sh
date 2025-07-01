@@ -6,13 +6,18 @@ BLUE='\033[0;34m'
 RED='\033[0;31m'
 NC='\033[0m' # No Color
 
-env_file=".env"
-if [ -f "$env_file" ]; then
-    export $(cat "$env_file" | grep -v '#' | sed 's/\r$//' | xargs)
-else
-    echo -e "${env_file} file not found"
-    exit 1
-fi
+source_env() {
+    local env_file=".env"
+    if [ "$NETWORK" == "localhost" ]; then
+        env_file=".env.local"
+    fi
+    if [ -f "$env_file" ]; then
+        export $(cat "$env_file" | grep -v '#' | sed 's/\r$//' | xargs)
+    else
+        echo -e "${env_file} file not found"
+        exit 1
+    fi
+}
 
 # Function to check required environment variables
 check_env() {
@@ -50,9 +55,12 @@ set_network_config() {
     "bsctestnet")
         CHAIN_ID=97
         ;;
+    "localhost")
+        CHAIN_ID=31337
+        ;;
     *)
         echo -e "${RED}Error: Unsupported network '$NETWORK'${NC}"
-        echo "Supported networks: mainnet, sepolia, bsctestnet, anvil"
+        echo "Supported networks: mainnet, sepolia, bsctestnet, localhost"
         exit 1
         ;;
     esac
@@ -74,13 +82,22 @@ run_forge_script() {
     local extra_args="$@"
 
     echo -e "${GREEN}Running Forge script: $script_name${NC}"
+
     FORGE_CMD="forge script script/$script_name \
-        --chain-id $CHAIN_ID \
-        --rpc-url $NETWORK \
-        --broadcast \
-        --verify \
-        --account $KEYSTORE_ACCOUNT $extra_args"
-        
+            --chain-id $CHAIN_ID \
+            --rpc-url $NETWORK \
+            --broadcast \
+            --verify \
+            --account $KEYSTORE_ACCOUNT $extra_args"
+
+    if [ "$NETWORK" == "localhost" ]; then
+        FORGE_CMD="forge script script/$script_name \
+            --chain-id $CHAIN_ID \
+            --rpc-url $NETWORK \
+            --broadcast \
+            --account $KEYSTORE_ACCOUNT $extra_args"
+    fi
+
     echo "Executing: $FORGE_CMD"
 
     read -p "Continue with script execution? (y/n): " confirm
