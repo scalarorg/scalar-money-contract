@@ -38,6 +38,11 @@ check_env() {
         missing=1
     fi
 
+    if [ -z "$KEYSTORE_PASSWORD" ]; then
+        echo -e "${RED}Error: KEYSTORE_PASSWORD is not set${NC}"
+        missing=1
+    fi
+
     if [ $missing -eq 1 ]; then
         exit 1
     fi
@@ -48,15 +53,19 @@ set_network_config() {
     case "$NETWORK" in
     "mainnet")
         CHAIN_ID=1
+        RPC_URL=${MAINNET_RPC_URL:-"https://eth-mainnet.g.alchemy.com/v2/$ALCHEMY_API_KEY"}
         ;;
     "sepolia")
         CHAIN_ID=11155111
+        RPC_URL=${SEPOLIA_RPC_URL:-"https://eth-sepolia.g.alchemy.com/v2/$ALCHEMY_API_KEY"}
         ;;
     "bsctestnet")
         CHAIN_ID=97
+        RPC_URL=${BSCTESTNET_RPC_URL:-"https://data-seed-prebsc-1-s1.binance.org:8545"}
         ;;
     "localhost")
         CHAIN_ID=31337
+        RPC_URL="http://localhost:8545"
         ;;
     *)
         echo -e "${RED}Error: Unsupported network '$NETWORK'${NC}"
@@ -86,19 +95,17 @@ run_forge_script() {
     FORGE_CMD="forge script script/$script_name \
             --chain-id $CHAIN_ID \
             --rpc-url $NETWORK \
-            --broadcast \
-            --verify \
-            --account $KEYSTORE_ACCOUNT $extra_args"
+            --broadcast"
 
-    if [ "$NETWORK" == "localhost" ]; then
-        FORGE_CMD="forge script script/$script_name \
-            --chain-id $CHAIN_ID \
-            --rpc-url $NETWORK \
-            --broadcast \
-            --account $KEYSTORE_ACCOUNT $extra_args"
+    if [ "$NETWORK" != "localhost" ] && [ "$script_name" == "Deploy.s.sol" ]; then
+        FORGE_CMD="$FORGE_CMD --verify"
     fi
 
-    echo "Executing: $FORGE_CMD"
+    FORGE_CMD="$FORGE_CMD --account $KEYSTORE_ACCOUNT --password $KEYSTORE_PASSWORD --sender $BROADCAST_ACCOUNT $extra_args"
+
+    PRINT_CMD=$(echo $FORGE_CMD | sed "s/$KEYSTORE_PASSWORD//g")
+    PRINT_CMD=$(echo $PRINT_CMD | sed "s/$BROADCAST_ACCOUNT//g")
+    echo "Executing: $PRINT_CMD"
 
     read -p "Continue with script execution? (y/n): " confirm
     if [[ $confirm != "y" && $confirm != "Y" ]]; then

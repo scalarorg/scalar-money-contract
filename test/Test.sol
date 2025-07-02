@@ -16,6 +16,17 @@ import { WETH } from "../src/tokens/WETH.sol";
 import { CauldronFactory } from "../src/cauldron/CauldronFactory.sol";
 import { console2 } from "forge-std/console2.sol";
 
+interface ICauldronV4 {
+    function cook(
+        uint8[] calldata actions,
+        uint256[] calldata values,
+        bytes[] calldata datas
+    )
+        external
+        payable
+        returns (uint256 value1, uint256 value2);
+}
+
 contract DeployTest is Test {
     StableCoin public stableCoin;
     ERC20 public sbtc;
@@ -34,7 +45,13 @@ contract DeployTest is Test {
     uint256 public constant COLLATERIZATION_RATE = uint256(8000) * 1e1;
     uint256 public constant BORROW_OPENING_FEE = uint256(50) * 1e1;
 
+    address public USER;
+
     function setUp() public {
+        USER = makeAddr("user");
+
+        vm.startPrank(USER);
+
         // 1. Deploy tokens
         stableCoin = new StableCoin("ScalarUSD", "sUSD", 18);
         sbtc = new ERC20("sBTC", "sBTC", 8);
@@ -102,5 +119,26 @@ contract DeployTest is Test {
         MarketLens.MarketInfo memory marketInfo = marketLens.getMarketInfoCauldronV3(ICauldronV3(sBTCMarket));
         console2.log("marketInfo.oracleExchangeRate", marketInfo.oracleExchangeRate);
         console2.log("marketInfo.collateralPrice", marketInfo.collateralPrice);
+    }
+
+    function testBorrow() public {
+        // mint tokens
+        uint256 amount = 1000 ether;
+        sbtc.mint(USER, amount);
+        stableCoin.mint(USER, amount);
+        // add liquidity
+        degenBox.deposit(IERC20(address(sbtc)), USER, sBTCMarket, amount, 0);
+        uint8[] memory actions = new uint8[](1);
+        actions[0] = 5;
+
+        uint256[] memory values = new uint256[](1);
+        values[0] = 0;
+
+        bytes[] memory datas = new bytes[](1);
+
+        int256 borrowAmount = 50;
+        datas[0] = abi.encode(borrowAmount, USER);
+        
+        ICauldronV4(sBTCMarket).cook(actions, values, datas);
     }
 }

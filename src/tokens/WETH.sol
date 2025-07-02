@@ -19,8 +19,7 @@ contract WETH is ERC20 {
         payable(msg.sender).transfer(amount);
     }
 
-    // TODO: Remove this function
-    function faucet(address account, uint256 amount) public {
+    function mint(address account, uint256 amount) public override {
         _mint(account, amount);
     }
 
