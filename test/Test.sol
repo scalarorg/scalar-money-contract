@@ -48,7 +48,12 @@ contract DeployTest is Test {
     address public USER;
 
     function setUp() public {
-        USER = makeAddr("user");
+        // USER = makeAddr("user");
+
+        uint256 privtekey = vm.envUint("PRIVATE_KEY");
+        USER = vm.addr(privtekey);
+
+        console2.log("USER", USER);
 
         vm.startPrank(USER);
 
@@ -63,7 +68,7 @@ contract DeployTest is Test {
         degenBox.whitelistMasterContract(address(masterCauldron), true);
 
         // 3. Deploy Oracle
-        oracle = new FixedPriceOracle("sBTC/sUSD", 100_000 ether, 18);
+        oracle = new FixedPriceOracle("sBTC/sUSD", 1e13, 18);
         oracleProxy = new ProxyOracle();
         oracleProxy.changeOracleImplementation(oracle);
 
@@ -90,6 +95,10 @@ contract DeployTest is Test {
 
         // 7. Deploy MarketLens
         marketLens = new MarketLens();
+
+        // 8. Prepare liquidity
+        stableCoin.mint(USER, 1e9 ether);
+        degenBox.deposit(IERC20(address(stableCoin)), USER, sBTCMarket, 1e9 ether, 0);
     }
 
     function testDeployment() public {
@@ -121,24 +130,56 @@ contract DeployTest is Test {
         console2.log("marketInfo.collateralPrice", marketInfo.collateralPrice);
     }
 
-    function testBorrow() public {
-        // mint tokens
-        uint256 amount = 1000 ether;
-        sbtc.mint(USER, amount);
-        stableCoin.mint(USER, amount);
-        // add liquidity
-        degenBox.deposit(IERC20(address(sbtc)), USER, sBTCMarket, amount, 0);
-        uint8[] memory actions = new uint8[](1);
-        actions[0] = 5;
+    function testAddCollateralAndBorrow() public {
+        // Mint tokens to USER
+        uint256 collateralAmount = 1e8; // 1 sBTC (8 decimals)
+        uint256 borrowAmount = 1e18; // 1 sUSD (18 decimals)
 
-        uint256[] memory values = new uint256[](1);
+        sbtc.mint(USER, collateralAmount);
+        stableCoin.mint(sBTCMarket, 1e9 ether); // Add liquidity to market
+
+        // Whitelist the deployed cauldron instance in DegenBox (as deployer/owner)
+        degenBox.whitelistMasterContract(sBTCMarket, true);
+
+        // Approve tokens for DegenBox and master contract for the user
+        vm.startPrank(USER);
+        sbtc.approve(address(degenBox), type(uint256).max);
+        stableCoin.approve(address(degenBox), type(uint256).max);
+        degenBox.setMasterContractApproval(USER, sBTCMarket, true, 0, 0x0, 0x0);
+        vm.stopPrank();
+
+        // Prepare cook actions
+        uint8[] memory actions = new uint8[](3);
+        actions[0] = 20; // ACTION_BENTO_DEPOSIT
+        actions[1] = 10; // ACTION_ADD_COLLATERAL
+        actions[2] = 5; // ACTION_BORROW
+
+        uint256[] memory values = new uint256[](3);
         values[0] = 0;
+        values[1] = 0;
+        values[2] = 0;
 
-        bytes[] memory datas = new bytes[](1);
+        bytes[] memory datas = new bytes[](3);
 
-        int256 borrowAmount = 50;
-        datas[0] = abi.encode(borrowAmount, USER);
-        
+        // 1. ACTION_BENTO_DEPOSIT: Deposit collateral to market
+        uint256 collateralShare = degenBox.toShare(IERC20(address(sbtc)), collateralAmount, false);
+        datas[0] = abi.encode(IERC20(address(sbtc)), sBTCMarket, int256(collateralAmount), int256(collateralShare));
+
+        // 2. ACTION_ADD_COLLATERAL: Add collateral to user's position
+        datas[1] = abi.encode(int256(collateralShare), USER, true); // skim = true
+
+        // 3. ACTION_BORROW: Borrow sUSD
+        datas[2] = abi.encode(int256(borrowAmount), USER);
+
+        // Execute cook as USER
+        vm.startPrank(USER);
         ICauldronV4(sBTCMarket).cook(actions, values, datas);
+        vm.stopPrank();
+
+        // Assertions
+        assertGt(CauldronV4(sBTCMarket).userCollateralShare(USER), 0, "User should have collateral");
+        assertGt(CauldronV4(sBTCMarket).userBorrowPart(USER), 0, "User should have borrow part");
+        assertTrue(CauldronV4(sBTCMarket).isSolvent(USER), "User should be solvent");
+        assertGt(stableCoin.balanceOf(USER), 0, "User should have received borrowed sUSD");
     }
 }
