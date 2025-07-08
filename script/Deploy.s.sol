@@ -152,7 +152,7 @@ contract ScalarSystemDeployScript is BaseScript {
         if (address(cauldronFactory) != address(0)) revert AlreadyDeployed();
         if (address(masterCauldron) == address(0)) revert NotDeployed();
 
-        cauldronFactory = new CauldronFactory(address(masterCauldron));
+        cauldronFactory = new CauldronFactory(address(masterCauldron), address(degenBox));
         emit CauldronFactoryDeployed(address(cauldronFactory), address(masterCauldron));
     }
 
