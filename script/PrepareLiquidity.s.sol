@@ -15,19 +15,22 @@ interface IDegenBox {
         address to,
         uint256 amount,
         uint256 share
-    ) external payable returns (uint256 amountOut, uint256 shareOut);
+    )
+        external
+        payable
+        returns (uint256 amountOut, uint256 shareOut);
 }
 
 contract PrepareLiquidityScript is BaseScript {
-    address public constant SBTC = 0x3cBb62d23120918019037b51a1e513FdAAddDE3f;
-    address public constant SUSD = 0x124C4a03C08601a0625bb5b543E58b2a61fCE770;
-    address public constant DEGEN_BOX = 0xB97DfDF8b0692a2A9aff2fc089E120b05410C7BD;
-    address public constant SBTC_MARKET = 0x962dbc8209Eb083Ed71C38cf4d7482c7C947cF14;
+    address public constant SUSD = 0xb3Ce4Baee3c5F7F17aB3f751bc12b7da1Ae10644;
+    address public constant SBTC = 0x29e596F7911372A707454fabaC5De33a475Bb9E9;
+    address public constant DEGEN_BOX = 0xC36b440D04D56a558B1bEE1Ae9723EB27e933837;
+    address public constant SBTC_MARKET = 0xA72aaB00A7eE79A4d70F21071937881bd252AeB1;
 
-    function run() external broadcast(){
+    function run() external broadcast {
         console2.log("Broadcaster:", msg.sender);
-        // IMintableBurnableERC20(SBTC).mint(msg.sender, 1000 ether);
-        IMintableBurnableERC20(SUSD).mint(msg.sender, 1e9 ether);
-        IDegenBox(DEGEN_BOX).deposit(IMintableBurnableERC20(SUSD), msg.sender, SBTC_MARKET, 1e9 ether, 0);
+        IMintableBurnableERC20(SBTC).mint(msg.sender, 1000 ether);
+        // IMintableBurnableERC20(SUSD).mint(msg.sender, 1e9 ether);
+        // IDegenBox(DEGEN_BOX).deposit(IMintableBurnableERC20(SUSD), msg.sender, SBTC_MARKET, 1e9 ether, 0);
     }
 }

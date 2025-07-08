@@ -11,6 +11,12 @@ git = "https://github.com/Abracadabra-money/abracadabra-money-contracts.git"
 rev = "6021168e86918322ef3405f87ef065c68dc2f7de"
 
 [[dependencies]]
+name = "chainlink"
+version = "0.0.1"
+git = "https://github.com/smartcontractkit/foundry-chainlink-toolkit.git"
+rev = "d610ec9ef54c325de7de1a5622c19933b2ae26cf"
+
+[[dependencies]]
 name = "forge-std"
 version = "1.9.5"
 git = "https://github.com/foundry-rs/forge-std.git"

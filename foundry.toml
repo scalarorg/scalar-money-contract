@@ -21,6 +21,7 @@ remappings = [
     "@BoringSolidity/=dependencies/BoringSolidity-1.0.0/contracts",
     "@solmate/=dependencies/solmate-6.2.0/src/",
     "@abracadabra/=dependencies/abracadabra-0.0.1/src/",
+    "@chainlink/=dependencies/chainlink-0.0.1/src",
 ]
 
 [profile.ci]
@@ -43,6 +44,7 @@ wrap_comments = true
 "openzeppelin-contracts" = { version = "5.0.2", git = "https://github.com/OpenZeppelin/openzeppelin-contracts.git", rev = "dbb6104ce834628e473d2173bbc9d47f81a9eec3" }
 "BoringSolidity" = { version = "1.0.0", git = "https://github.com/Abracadabra-money/BoringSolidity.git", rev = "16e10d3faa1a5eda32668619b6c560e925d85255" }
 "abracadabra" = { version = "0.0.1", git = "https://github.com/Abracadabra-money/abracadabra-money-contracts.git", rev = "6021168" }
+"chainlink" = { version = "0.0.1", git = "https://github.com/smartcontractkit/foundry-chainlink-toolkit.git", rev = "d610ec9" }
 
 [etherscan]
 mainnet = { key = "${API_KEY_ETHERSCAN}" }

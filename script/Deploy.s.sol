@@ -4,7 +4,6 @@ pragma solidity >=0.8.0;
 import { DegenBox } from "@abracadabra/DegenBox.sol";
 import { IBentoBoxV1 } from "@abracadabra/interfaces/IBentoBoxV1.sol";
 import { CauldronV4 } from "@abracadabra/cauldrons/CauldronV4.sol";
-import { FixedPriceOracle } from "@abracadabra/oracles/FixedPriceOracle.sol";
 import { ProxyOracle } from "@abracadabra/oracles/ProxyOracle.sol";
 import { MarketLens } from "@abracadabra/lenses/MarketLens.sol";
 import { IERC20 } from "@BoringSolidity/ERC20.sol";
@@ -13,6 +12,7 @@ import { StableCoin } from "../src/tokens/StableCoin.sol";
 import { ERC20 } from "../src/tokens/ERC20.sol";
 import { WETH } from "../src/tokens/WETH.sol";
 import { CauldronFactory } from "../src/cauldron/CauldronFactory.sol";
+import { ChainLinkOracleAdaptor } from "../src/oracles/ChainLinkOracleAdaptor.sol";
 
 contract ScalarSystemDeployScript is BaseScript {
     // Events for better deployment tracking
@@ -31,12 +31,18 @@ contract ScalarSystemDeployScript is BaseScript {
     uint256 public constant COLLATERIZATION_RATE = uint256(8000) * 1e1;
     uint256 public constant BORROW_OPENING_FEE = uint256(50) * 1e1;
 
+    address constant CHAINLINK_ORACLE = 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43;
+
+    uint8 constant TOKEN_DECIMALS = 18;
+
+    address constant ZERO_ADDRESS = address(0);
+
     StableCoin public stableCoin;
     ERC20 public sbtc;
     WETH public weth;
     DegenBox public degenBox;
     CauldronV4 public masterCauldron;
-    FixedPriceOracle public oracle;
+    ChainLinkOracleAdaptor public oracle;
     ProxyOracle public oracleProxy;
     CauldronFactory public cauldronFactory;
     address public sBTCMarket;
@@ -60,7 +66,7 @@ contract ScalarSystemDeployScript is BaseScript {
             WETH,
             DegenBox,
             CauldronV4,
-            FixedPriceOracle,
+            ChainLinkOracleAdaptor,
             ProxyOracle,
             CauldronFactory,
             address,
@@ -88,6 +94,9 @@ contract ScalarSystemDeployScript is BaseScript {
         // 7. Deploy MarketLens
         deployMarketLens();
 
+        // 8. Optional
+        prepareLiquidity();
+
         return (
             stableCoin,
             sbtc,
@@ -103,24 +112,24 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function deployTokens() internal {
-        if (address(stableCoin) != address(0)) revert AlreadyDeployed();
+        if (address(stableCoin) != ZERO_ADDRESS) revert AlreadyDeployed();
 
         // Deploy ScalarUSD
-        stableCoin = new StableCoin("ScalarUSD", "sUSD", 18);
-        emit TokenDeployed("ScalarUSD", address(stableCoin), "sUSD", 18);
+        stableCoin = new StableCoin("ScalarUSD", "sUSD", TOKEN_DECIMALS);
+        emit TokenDeployed("ScalarUSD", address(stableCoin), "sUSD", TOKEN_DECIMALS);
 
         // Deploy sBTC
-        sbtc = new ERC20("sBTC", "sBTC", 8);
-        emit TokenDeployed("sBTC", address(sbtc), "sBTC", 8);
+        sbtc = new ERC20("sBTC", "sBTC", TOKEN_DECIMALS);
+        emit TokenDeployed("sBTC", address(sbtc), "sBTC", TOKEN_DECIMALS);
 
         // Deploy WETH
         weth = new WETH();
-        emit TokenDeployed("WETH", address(weth), "WETH", 18);
+        emit TokenDeployed("WETH", address(weth), "WETH", TOKEN_DECIMALS);
     }
 
     function deployDegenBoxAndMasterCauldron() internal {
-        if (address(degenBox) != address(0)) revert AlreadyDeployed();
-        if (address(stableCoin) == address(0)) revert NotDeployed();
+        if (address(degenBox) != ZERO_ADDRESS) revert AlreadyDeployed();
+        if (address(stableCoin) == ZERO_ADDRESS) revert NotDeployed();
 
         // Deploy DegenBox
         degenBox = new DegenBox(IERC20(address(weth)));
@@ -135,31 +144,31 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function deployOracle() internal {
-        if (address(oracle) != address(0)) revert AlreadyDeployed();
-
-        // Deploy FixedPriceOracle: 1 USD = ? SBTC
-        // 1 USD = 1/100K * 1e18 = 1e13
-        oracle = new FixedPriceOracle("sBTC/sUSD", 1e13, 18);
+        if (address(oracle) != ZERO_ADDRESS) revert AlreadyDeployed();
 
         // Deploy ProxyOracle
         oracleProxy = new ProxyOracle();
+
+        oracle = new ChainLinkOracleAdaptor(CHAINLINK_ORACLE, TOKEN_DECIMALS, "sBTC/sUSD", "sBTC/sUSD");
+        // oracleProxy.changeOracleImplementation(IOracle(oracle));
+
         oracleProxy.changeOracleImplementation(oracle);
 
         emit OracleDeployed(address(oracle), address(oracleProxy), "sBTC/sUSD Fixed Price Oracle");
     }
 
     function deployCauldronFactory() internal {
-        if (address(cauldronFactory) != address(0)) revert AlreadyDeployed();
-        if (address(masterCauldron) == address(0)) revert NotDeployed();
+        if (address(cauldronFactory) != ZERO_ADDRESS) revert AlreadyDeployed();
+        if (address(masterCauldron) == ZERO_ADDRESS) revert NotDeployed();
 
         cauldronFactory = new CauldronFactory(address(masterCauldron), address(degenBox));
         emit CauldronFactoryDeployed(address(cauldronFactory), address(masterCauldron));
     }
 
     function deploySBTCMarket() internal {
-        if (sBTCMarket != address(0)) revert AlreadyDeployed();
-        if (address(cauldronFactory) == address(0)) revert NotDeployed();
-        if (address(oracleProxy) == address(0)) revert NotDeployed();
+        if (sBTCMarket != ZERO_ADDRESS) revert AlreadyDeployed();
+        if (address(cauldronFactory) == ZERO_ADDRESS) revert NotDeployed();
+        if (address(oracleProxy) == ZERO_ADDRESS) revert NotDeployed();
 
         bytes memory oracleData = "";
 
@@ -179,8 +188,8 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function approveTokensForDegenBox() internal {
-        if (address(degenBox) == address(0)) revert NotDeployed();
-        if (address(stableCoin) == address(0)) revert NotDeployed();
+        if (address(degenBox) == ZERO_ADDRESS) revert NotDeployed();
+        if (address(stableCoin) == ZERO_ADDRESS) revert NotDeployed();
 
         stableCoin.approve(address(degenBox), type(uint256).max);
         sbtc.approve(address(degenBox), type(uint256).max);
@@ -188,9 +197,16 @@ contract ScalarSystemDeployScript is BaseScript {
     }
 
     function deployMarketLens() internal {
-        if (address(marketLens) != address(0)) revert AlreadyDeployed();
+        if (address(marketLens) != ZERO_ADDRESS) revert AlreadyDeployed();
 
         marketLens = new MarketLens();
         emit MarketLensDeployed(address(marketLens));
+    }
+
+    function prepareLiquidity() internal {
+        sbtc.mint(msg.sender, 1e3 ether);
+        uint256 amount = 1e12 ether;
+        stableCoin.mint(msg.sender, amount);
+        degenBox.deposit(stableCoin, msg.sender, sBTCMarket, amount, 0);
     }
 }
