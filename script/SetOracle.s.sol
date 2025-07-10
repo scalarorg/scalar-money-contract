@@ -3,7 +3,6 @@ pragma solidity >=0.8.0;
 
 import { IOracle } from "@abracadabra/interfaces/IOracle.sol";
 import { ProxyOracle } from "@abracadabra/oracles/ProxyOracle.sol";
-import { FixedPriceOracle } from "@abracadabra/oracles/FixedPriceOracle.sol";
 import { BaseScript } from "./Base.s.sol";
 import { ChainLinkOracleAdaptor } from "../src/oracles/ChainLinkOracleAdaptor.sol";
 

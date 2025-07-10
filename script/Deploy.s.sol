@@ -7,12 +7,16 @@ import { CauldronV4 } from "@abracadabra/cauldrons/CauldronV4.sol";
 import { ProxyOracle } from "@abracadabra/oracles/ProxyOracle.sol";
 import { MarketLens } from "@abracadabra/lenses/MarketLens.sol";
 import { IERC20 } from "@BoringSolidity/ERC20.sol";
+import { FixedPriceOracle } from "@abracadabra/oracles/FixedPriceOracle.sol";
 import { BaseScript } from "./Base.s.sol";
 import { StableCoin } from "../src/tokens/StableCoin.sol";
 import { ERC20 } from "../src/tokens/ERC20.sol";
 import { WETH } from "../src/tokens/WETH.sol";
 import { CauldronFactory } from "../src/cauldron/CauldronFactory.sol";
 import { ChainLinkOracleAdaptor } from "../src/oracles/ChainLinkOracleAdaptor.sol";
+import { ChainConfigHelper } from "../src/helpers/ChainConfigHelper.sol";
+
+import { console2 } from "forge-std/console2.sol";
 
 contract ScalarSystemDeployScript is BaseScript {
     // Events for better deployment tracking
@@ -25,18 +29,17 @@ contract ScalarSystemDeployScript is BaseScript {
 
     error AlreadyDeployed();
     error NotDeployed();
+    error UnsupportedChain();
 
     uint64 public constant INTEREST_PER_SECOND = uint64((uint256(600) * 316_880_878) / 100);
     uint256 public constant LIQUIDATION_MULTIPLIER = uint256(600) * 1e1 + 1e5;
     uint256 public constant COLLATERIZATION_RATE = uint256(8000) * 1e1;
     uint256 public constant BORROW_OPENING_FEE = uint256(50) * 1e1;
 
-    address constant CHAINLINK_ORACLE = 0x1b44F3514812d835EB1BDB0acB33d3fA3351Ee43;
-
     uint8 constant TOKEN_DECIMALS = 18;
-
     address constant ZERO_ADDRESS = address(0);
 
+    // Deployed contracts
     StableCoin public stableCoin;
     ERC20 public sbtc;
     WETH public weth;
@@ -47,6 +50,7 @@ contract ScalarSystemDeployScript is BaseScript {
     CauldronFactory public cauldronFactory;
     address public sBTCMarket;
     MarketLens public marketLens;
+    ChainConfigHelper public chainConfigHelper;
 
     // Deployment state tracking
     bool public deployed;
@@ -73,13 +77,15 @@ contract ScalarSystemDeployScript is BaseScript {
             MarketLens
         )
     {
+        chainConfigHelper = new ChainConfigHelper();
+
         // 1. Deploy tokens
         deployTokens();
 
         // 2. Deploy DegenBox and master cauldron
         deployDegenBoxAndMasterCauldron();
 
-        // 3. Deploy Oracle
+        // 3. Deploy Oracle (dynamic based on chain)
         deployOracle();
 
         // 4. Deploy CauldronFactory
@@ -146,15 +152,27 @@ contract ScalarSystemDeployScript is BaseScript {
     function deployOracle() internal {
         if (address(oracle) != ZERO_ADDRESS) revert AlreadyDeployed();
 
+        address chainOracle = chainConfigHelper.getBtcUsdOracle(block.chainid);
+
+        address oracleAddress;
+
         // Deploy ProxyOracle
         oracleProxy = new ProxyOracle();
 
-        oracle = new ChainLinkOracleAdaptor(CHAINLINK_ORACLE, TOKEN_DECIMALS, "sBTC/sUSD", "sBTC/sUSD");
-        // oracleProxy.changeOracleImplementation(IOracle(oracle));
+        if (chainOracle == ZERO_ADDRESS) {
+            FixedPriceOracle fixedPriceOracle = new FixedPriceOracle("sBTC/sUSD", 5e12, TOKEN_DECIMALS);
+            oracleAddress = address(fixedPriceOracle);
+            oracleProxy.changeOracleImplementation(fixedPriceOracle);
+        } else {
+            // Use existing Chainlink oracle
+            oracleAddress = chainOracle;
+            oracle = new ChainLinkOracleAdaptor(oracleAddress, TOKEN_DECIMALS, "sBTC/sUSD", "sBTC/sUSD");
+            oracleProxy.changeOracleImplementation(oracle);
+        }
 
-        oracleProxy.changeOracleImplementation(oracle);
-
-        emit OracleDeployed(address(oracle), address(oracleProxy), "sBTC/sUSD Fixed Price Oracle");
+        emit OracleDeployed(
+            address(oracle), address(oracleProxy), string(abi.encodePacked("sBTC/sUSD Oracle for ", "chain"))
+        );
     }
 
     function deployCauldronFactory() internal {
