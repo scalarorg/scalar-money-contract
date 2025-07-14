@@ -61,6 +61,10 @@ contract ScalarSystemDeployScript is BaseScript {
         deployed = true;
     }
 
+    constructor() {
+        chainConfigHelper = new ChainConfigHelper();
+    }
+
     function run()
         external
         broadcast
@@ -77,8 +81,6 @@ contract ScalarSystemDeployScript is BaseScript {
             MarketLens
         )
     {
-        chainConfigHelper = new ChainConfigHelper();
-
         // 1. Deploy tokens
         deployTokens();
 

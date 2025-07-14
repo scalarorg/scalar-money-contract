@@ -17,11 +17,6 @@ contract ChainConfigHelper {
     mapping(uint256 => ChainlinkOracleConfig) public chainlinkOracles;
 
     constructor() {
-        setupChainlinkOracles();
-    }
-
-    function setupChainlinkOracles() internal {
-        // Ethereum Mainnet (Chain ID: 1)
         chainlinkOracles[1] = ChainlinkOracleConfig({
             btcUsdOracle: 0xF4030086522a5bEEa4988F8cA5B36dbC97BeE88c,
             ethUsdOracle: 0x5f4eC3Df9cbd43714FE2740f5E3616155c5b8419,
