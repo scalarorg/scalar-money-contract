@@ -10,7 +10,7 @@ contract SetFixedPriceOracle is BaseScript {
     address proxy_oracle = 0xC36F55c1F2Be86Eb7cb911eA573bb105101760D1;
 
     function run() external broadcast {
-        FixedPriceOracle oracle = new FixedPriceOracle("sBTC/sUSD", 5e12, 18);
+        FixedPriceOracle oracle = new FixedPriceOracle("sBTC/sUSD", 1e13, 18);
         ProxyOracle(proxy_oracle).changeOracleImplementation(IOracle(oracle));
     }
 }
