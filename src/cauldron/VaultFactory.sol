@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
-import { CauldronV4 } from "@abracadabra/cauldrons/CauldronV4.sol";
 import { IBentoBoxV1 } from "@abracadabra/interfaces/IBentoBoxV1.sol";
+import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
+import { Vault } from "./Vault.sol";
 
-contract CauldronFactory {
-    address public immutable MASTER_CONTRACT;
-    address public immutable DEGEN_BOX;
+contract VaultFactory {
+    address public masterContract;
+    address public degenBox;
 
     event CauldronCloned(address indexed clone, address indexed creator);
 
@@ -15,28 +15,27 @@ contract CauldronFactory {
     error ErrCloneCreationFailed();
     error ErrInitializationFailed();
 
-    constructor(address _masterContract, address _degenBox) {
-        if (_masterContract == address(0)) {
-            revert ErrZeroAddress();
-        }
+    constructor(address _degenBox, address _stableCoin) {
         if (_degenBox == address(0)) {
             revert ErrZeroAddress();
         }
-        MASTER_CONTRACT = _masterContract;
-        DEGEN_BOX = _degenBox;
+
+        Vault vault = new Vault(msg.sender, _degenBox, _stableCoin);
+        masterContract = address(vault);
+        degenBox = _degenBox;
     }
 
     /// @notice Creates a new cauldron clone
     /// @param data Initialization data for the cauldron
     /// @return The address of the newly created clone
-    function createCauldron(bytes calldata data) external returns (address) {
+    function createVault(bytes calldata data) external returns (address) {
         // Create the clone
-        address clone = Clones.clone(MASTER_CONTRACT);
+        address clone = Clones.clone(masterContract);
         if (clone == address(0)) {
             revert ErrCloneCreationFailed();
         }
 
-        return IBentoBoxV1(DEGEN_BOX).deploy(address(MASTER_CONTRACT), data, true);
+        return IBentoBoxV1(degenBox).deploy(address(masterContract), data, true);
     }
 
     // /// @notice Creates multiple cauldron clones in a single transaction
