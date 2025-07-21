@@ -7,19 +7,7 @@ import { MarketLens } from "@abracadabra/lenses/MarketLens.sol";
 import { VaultTestLib } from "./VaultTestLib.sol";
 import { console2 } from "forge-std/console2.sol";
 
-// Import your BaseTest with the shared deployment logic
-import "./BaseTest.sol"; // Adjust path as needed
-
-// interface ICauldronV4 {
-//     function cook(
-//         uint8[] calldata actions,
-//         uint256[] calldata values,
-//         bytes[] calldata datas
-//     )
-//         external
-//         payable
-//         returns (uint256 value1, uint256 value2);
-// }
+import "./BaseTest.sol";
 
 contract DeployTest is BaseTest {
     address public _deployer;

@@ -1,103 +1,58 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity >=0.8.0;
 
-// import { BaseTest } from "./BaseTest.sol";
-// import { IBentoBoxV1 } from "@abracadabra/interfaces/IBentoBoxV1.sol";
-// import { CauldronV4 } from "@abracadabra/cauldrons/CauldronV4.sol";
-// import { ISwapperV2 } from "@abracadabra/interfaces/ISwapperV2.sol";
-// import { IERC20 } from "@BoringSolidity/ERC20.sol";
-// import { ERC20 } from "../src/tokens/ERC20.sol";
-// import { RebaseLibrary, Rebase } from "@BoringSolidity/libraries/BoringRebase.sol";
-// import { BoringMath, BoringMath128 } from "@BoringSolidity/libraries/BoringMath.sol";
-// import { Vault } from "../src/cauldron/Vault.sol";
+import { ICauldronV4 } from "@abracadabra/interfaces/ICauldronV4.sol";
+import { CauldronV4 } from "@abracadabra/cauldrons/CauldronV4.sol";
+import { MarketLens } from "@abracadabra/lenses/MarketLens.sol";
+import { VaultTestLib } from "./VaultTestLib.sol";
+import { console2 } from "forge-std/console2.sol";
 
-// import { console2 } from "forge-std/console2.sol";
+import "./BaseTest.sol";
 
-// interface ICauldronV4 {
-//     function cook(
-//         uint8[] calldata actions,
-//         uint256[] calldata values,
-//         bytes[] calldata datas
-//     )
-//         external
-//         payable
-//         returns (uint256 value1, uint256 value2);
+contract LiquidatioinTest is BaseTest {
+    address public _deployer;
 
-//     function liquidate(
-//         address[] memory users,
-//         uint256[] memory maxBorrowParts,
-//         address to,
-//         ISwapperV2 swapper,
-//         bytes memory swapperData
-//     )
-//         external;
+    uint256 public constant collateralAmount = 1 ether; // 1 sBTC
+    uint8 public constant percentBorrow = 80;
 
-//     function userBorrowPart(address user) external view returns (uint256);
+    function setUp() public override {
+        super.setUp();
 
-//     function maxBorrowPartToLiquidate(address user, uint256 maxBorrowPart) external view returns (uint256);
-// }
+        _deployer = createUser("deployer", address(0x777), 1000 ether);
 
-// contract LiquidateTest is BaseTest {
-//     function setUp() public override {
-//         fork("sepolia");
-//         super.setUp();
-//         address SCALAR_WHALE = createUser("scalarWhale", address(0x11), 100_000 ether);
+        // Deploy the entire Scalar system
+        deployment = deployScalarSystem(_deployer);
 
-//         (
-//             masterContract,
-//             orderAgent,
-//             gmETHDeployment,
-//             ,
-//             gmBTCDeployment,
-//             ,
-//             gmARBDeployment,
-//             gmSOLDeployment,
-//             gmLINKDeployment
-//         ) = script.deploy();
+        // Prepare indeployScalarSystem
+        prepareLiquidity(deployment);
 
-//         box = IBentoBoxV1(toolkit.getAddress(block.chainid, "degenBox"));
-//         mim = toolkit.getAddress(block.chainid, "mim");
-//         gmBTC = toolkit.getAddress(block.chainid, "gmx.v2.gmBTC");
-//         gmETH = toolkit.getAddress(block.chainid, "gmx.v2.gmETH");
-//         weth = toolkit.getAddress(block.chainid, "weth");
-//         gmARB = toolkit.getAddress(block.chainid, "gmx.v2.gmARB");
-//         gmSOL = toolkit.getAddress(block.chainid, "gmx.v2.gmSOL");
-//         gmLINK = toolkit.getAddress(block.chainid, "gmx.v2.gmLINK");
-//         router = IGmxV2ExchangeRouter(toolkit.getAddress(block.chainid, "gmx.v2.exchangeRouter"));
-//         usdc = toolkit.getAddress(block.chainid, "usdc");
-//         exchange = new ExchangeRouterMock(address(0), address(0));
+        // Prepare the USER with tokens and approvals
+        prepareUser(
+            alice,
+            deployment,
+            1e9 ether, // stableCoin amount
+            1000 ether, // sBTC amount
+            100 ether // ETH amount
+        );
+    }
 
-//         // Alice just made it
-//         deal(usdc, alice, 100_000e6);
-//         pushPrank(GM_BTC_WHALE);
-//         gmBTC.safeTransfer(alice, 100_000 ether);
-//         popPrank();
-//         pushPrank(GM_ETH_WHALE);
-//         gmETH.safeTransfer(alice, 100_000 ether);
-//         popPrank();
-//         pushPrank(GM_ARB_WHALE);
-//         gmARB.safeTransfer(alice, 100_000 ether);
-//         popPrank();
-//         pushPrank(GM_SOL_WHALE);
-//         gmSOL.safeTransfer(alice, 100_000 ether);
-//         popPrank();
-//         pushPrank(GM_LINK_WHALE);
-//         gmLINK.safeTransfer(alice, 100_000 ether);
-//         popPrank();
+    function testLiquidation() public {
+        pushPrank(alice);
 
-//         // put 1m mim inside the cauldrons
-//         pushPrank(MIM_WHALE);
-//         mim.safeTransfer(address(box), 5_000_000e18);
-//         popPrank();
+        VaultTestLib.depositAndBorrow(
+            IBentoBoxV1(address(deployment.degenBox)),
+            ICauldronV4(address(deployment.vault)),
+            address(deployment.masterContract),
+            IERC20(address(deployment.sbtc)),
+            alice,
+            collateralAmount,
+            percentBorrow
+        );
 
-//         box.deposit(IERC20(mim), address(box), address(gmETHDeployment.cauldron), 1_000_000e18, 0);
-//         box.deposit(IERC20(mim), address(box), address(gmBTCDeployment.cauldron), 1_000_000e18, 0);
-//         box.deposit(IERC20(mim), address(box), address(gmARBDeployment.cauldron), 1_000_000e18, 0);
-//         box.deposit(IERC20(mim), address(box), address(gmSOLDeployment.cauldron), 1_000_000e18, 0);
-//         box.deposit(IERC20(mim), address(box), address(gmLINKDeployment.cauldron), 1_000_000e18, 0);
-
-//         pushPrank(box.owner());
-//         box.whitelistMasterContract(masterContract, true);
-//         popPrank();
-//     }
-// }
+        assertTrue(ICauldronV4(deployment.vault).isSolvent(alice), "alice is insolvent");
+        uint256 userCollateralShare = ICauldronV4(deployment.vault).userCollateralShare(alice);
+        uint256 amount = deployment.degenBox.toAmount(IERC20(address(deployment.sbtc)), userCollateralShare, true);
+        assertEq(amount, collateralAmount, "user collateral is wrong");
+        popPrank();
+    }
+}
