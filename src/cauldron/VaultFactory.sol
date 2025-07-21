@@ -6,10 +6,8 @@ import { Clones } from "@openzeppelin/contracts/proxy/Clones.sol";
 import { Vault } from "./Vault.sol";
 
 contract VaultFactory {
-    address public masterContract;
+    Vault public masterContract;
     address public degenBox;
-
-    event CauldronCloned(address indexed clone, address indexed creator);
 
     error ErrZeroAddress();
     error ErrCloneCreationFailed();
@@ -20,8 +18,7 @@ contract VaultFactory {
             revert ErrZeroAddress();
         }
 
-        Vault vault = new Vault(msg.sender, _degenBox, _stableCoin);
-        masterContract = address(vault);
+        masterContract = new Vault(msg.sender, _degenBox, _stableCoin);
         degenBox = _degenBox;
     }
 
@@ -29,12 +26,6 @@ contract VaultFactory {
     /// @param data Initialization data for the cauldron
     /// @return The address of the newly created clone
     function createVault(bytes calldata data) external returns (address) {
-        // Create the clone
-        address clone = Clones.clone(masterContract);
-        if (clone == address(0)) {
-            revert ErrCloneCreationFailed();
-        }
-
         return IBentoBoxV1(degenBox).deploy(address(masterContract), data, true);
     }
 

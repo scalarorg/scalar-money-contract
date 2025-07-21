@@ -21,35 +21,70 @@ contract Vault is CauldronV4 {
         CauldronV4(IBentoBoxV1(bentoBox_), IERC20(magicInternetMoney_), owner)
     { }
 
-    function maxBorrowPartToLiquidate(address user, uint256 maxBorrowPart) public returns (uint256) {
-        uint256 borrowPart;
-        Rebase memory bentoBoxTotals = bentoBox.totals(collateral);
-        uint256 availableBorrowPart = userBorrowPart[user];
-        borrowPart = maxBorrowPart > availableBorrowPart ? availableBorrowPart : maxBorrowPart;
+    // function maxBorrowPartToLiquidate(address user, uint256 maxBorrowPart) public returns (uint256) {
+    //     // Update exchange rate and accrue interest first
+    //     (, uint256 _exchangeRate) = updateExchangeRate();
+    //     accrue();
 
-        (, uint256 _exchangeRate) = oracle.get(oracleData);
+    //     uint256 availableBorrowPart = userBorrowPart[user];
+    //     uint256 userCollateral = userCollateralShare[user];
 
-        uint256 borrowAmount = totalBorrow.toElastic(borrowPart, false);
-        uint256 collateralShare = bentoBoxTotals.toBase(
-            borrowAmount.mul(LIQUIDATION_MULTIPLIER).mul(_exchangeRate)
-                / (LIQUIDATION_MULTIPLIER_PRECISION * EXCHANGE_RATE_PRECISION),
-            false
-        );
+    //     console2.log("[maxBorrowPartToLiquidate] availableBorrowPart:", availableBorrowPart);
+    //     console2.log("[maxBorrowPartToLiquidate] userCollateral:", userCollateral);
+    //     console2.log("[maxBorrowPartToLiquidate] exchangeRate:", _exchangeRate);
 
-        uint256 userCollateral = userCollateralShare[user];
+    //     if (availableBorrowPart == 0 || userCollateral == 0) {
+    //         return 0;
+    //     }
 
-        if (userCollateral >= collateralShare) {
-            return borrowPart;
-        }
+    //     // Calculate the maximum borrow amount that can be liquidated based on available collateral
+    //     // Formula: maxBorrowAmount = userCollateral * exchangeRate / liquidationMultiplier
+    //     uint256 maxBorrowAmountFromCollateral =
+    // userCollateral.mul(_exchangeRate).mul(LIQUIDATION_MULTIPLIER_PRECISION)
+    //         / (LIQUIDATION_MULTIPLIER.mul(EXCHANGE_RATE_PRECISION));
 
-        // Convert collateral share to base amount
-        uint256 collateralAmount = bentoBoxTotals.toElastic(userCollateral, false);
+    //     console2.log("[maxBorrowPartToLiquidate] maxBorrowAmountFromCollateral:", maxBorrowAmountFromCollateral);
 
-        // Calculate max borrow amount based on collateral
-        // collateralAmount * exchangeRate / liquidationMultiplier = maxBorrowAmount
-        uint256 maxBorrowAmount = collateralAmount.mul(EXCHANGE_RATE_PRECISION).mul(LIQUIDATION_MULTIPLIER_PRECISION)
-            / (_exchangeRate.mul(LIQUIDATION_MULTIPLIER));
+    //     // Convert borrow amount to borrow part
+    //     uint256 maxBorrowPartFromCollateral = totalBorrow.toBase(maxBorrowAmountFromCollateral, false);
 
-        return totalBorrow.toBase(maxBorrowAmount, false);
-    }
+    //     console2.log("[maxBorrowPartToLiquidate] maxBorrowPartFromCollateral:", maxBorrowPartFromCollateral);
+
+    //     // Take the minimum of:
+    //     // 1. Available borrow part
+    //     // 2. Requested max borrow part
+    //     // 3. Max borrow part that can be covered by collateral
+    //     uint256 safeBorrowPart = availableBorrowPart;
+    //     if (maxBorrowPart < safeBorrowPart) {
+    //         safeBorrowPart = maxBorrowPart;
+    //     }
+    //     if (maxBorrowPartFromCollateral < safeBorrowPart) {
+    //         safeBorrowPart = maxBorrowPartFromCollateral;
+    //     }
+
+    //     console2.log("[maxBorrowPartToLiquidate] final safeBorrowPart:", safeBorrowPart);
+
+    //     // Verify this won't cause underflow by calculating required collateral
+    //     if (safeBorrowPart > 0) {
+    //         Rebase memory bentoBoxTotals = bentoBox.totals(collateral);
+    //         uint256 borrowAmount = totalBorrow.toElastic(safeBorrowPart, false);
+    //         uint256 requiredCollateralShare = bentoBoxTotals.toBase(
+    //             borrowAmount.mul(LIQUIDATION_MULTIPLIER).mul(_exchangeRate)
+    //                 / (LIQUIDATION_MULTIPLIER_PRECISION * EXCHANGE_RATE_PRECISION),
+    //             false
+    //         );
+
+    //         console2.log("[maxBorrowPartToLiquidate] borrowAmount:", borrowAmount);
+    //         console2.log("[maxBorrowPartToLiquidate] requiredCollateralShare:", requiredCollateralShare);
+
+    //         // If required collateral exceeds available, reduce the borrow part proportionally
+    //         if (requiredCollateralShare > userCollateral) {
+    //             // Calculate the ratio and reduce borrow part accordingly
+    //             safeBorrowPart = safeBorrowPart.mul(userCollateral) / requiredCollateralShare;
+    //             console2.log("[maxBorrowPartToLiquidate] reduced safeBorrowPart:", safeBorrowPart);
+    //         }
+    //     }
+
+    //     return safeBorrowPart;
+    // }
 }

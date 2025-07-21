@@ -21,7 +21,7 @@ contract ScalarSystemDeployScript is BaseScript {
     event TokenDeployed(string name, address indexed token, string symbol, uint8 decimals);
     event DegenBoxDeployed(address indexed degenBox, address indexed masterCauldron);
     event OracleDeployed(address indexed oracle, address indexed proxy, string description);
-    event CauldronFactoryDeployed(address indexed factory);
+    event VaultFactoryDeployed(address indexed factory);
     event MarketDeployed(address indexed market, address indexed collateral, address indexed oracle);
     event MarketLensDeployed(address indexed lens);
 
@@ -45,7 +45,7 @@ contract ScalarSystemDeployScript is BaseScript {
     ChainLinkOracleAdaptor public oracle;
     ProxyOracle public oracleProxy;
     VaultFactory public vaultFactory;
-    address public sBTCMarket;
+    address public vault;
     MarketLens public marketLens;
     ChainConfigHelper public chainConfigHelper;
 
@@ -70,7 +70,7 @@ contract ScalarSystemDeployScript is BaseScript {
         deployOracle();
 
         // 3. Deploy DegenBox and master cauldron
-        deployDegenBoxAndCauldron();
+        deployDegenBoxAndVault();
 
         // 4. Approve tokens for DegenBox
         approveTokensForDegenBox();
@@ -81,7 +81,7 @@ contract ScalarSystemDeployScript is BaseScript {
         // 6. Optional
         prepareLiquidity();
 
-        return (sBTCMarket, stableCoin, sbtc, marketLens, oracleProxy);
+        return (vault, stableCoin, sbtc, marketLens, oracleProxy);
     }
 
     function deployTokens() internal {
@@ -100,15 +100,15 @@ contract ScalarSystemDeployScript is BaseScript {
         emit TokenDeployed("WETH", address(weth), "WETH", TOKEN_DECIMALS);
     }
 
-    function deployDegenBoxAndCauldron() internal {
+    function deployDegenBoxAndVault() internal {
         if (address(degenBox) != ZERO_ADDRESS) revert AlreadyDeployed();
         if (address(stableCoin) == ZERO_ADDRESS) revert NotDeployed();
         if (address(vaultFactory) != ZERO_ADDRESS) revert AlreadyDeployed();
         if (address(oracleProxy) == ZERO_ADDRESS) revert NotDeployed();
-        if (sBTCMarket != ZERO_ADDRESS) revert AlreadyDeployed();
+        if (vault != ZERO_ADDRESS) revert AlreadyDeployed();
 
         vaultFactory = new VaultFactory(address(degenBox), address(stableCoin));
-        emit CauldronFactoryDeployed(address(vaultFactory));
+        emit VaultFactoryDeployed(address(vaultFactory));
 
         bytes memory oracleData = "";
 
@@ -122,9 +122,9 @@ contract ScalarSystemDeployScript is BaseScript {
             BORROW_OPENING_FEE
         );
 
-        sBTCMarket = vaultFactory.createVault(initData);
+        vault = vaultFactory.createVault(initData);
 
-        emit MarketDeployed(sBTCMarket, address(sbtc), address(oracleProxy));
+        emit MarketDeployed(vault, address(sbtc), address(oracleProxy));
 
         // Deploy DegenBox
         degenBox = new DegenBox(IERC20(address(weth)));
@@ -183,6 +183,6 @@ contract ScalarSystemDeployScript is BaseScript {
         sbtc.mint(msg.sender, 1e3 ether);
         uint256 amount = 1e12 ether;
         stableCoin.mint(msg.sender, amount);
-        degenBox.deposit(stableCoin, msg.sender, sBTCMarket, amount, 0);
+        degenBox.deposit(stableCoin, msg.sender, vault, amount, 0);
     }
 }
