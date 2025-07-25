@@ -69,7 +69,7 @@ contract ScalarSystemDeployScript is BaseScript {
         // 2. Deploy Oracle (dynamic based on chain)
         deployOracle();
 
-        // 3. Deploy DegenBox and master cauldron
+        // 3. Deploy DegenBox and master vault
         deployDegenBoxAndVault();
 
         // 4. Approve tokens for DegenBox
@@ -107,6 +107,9 @@ contract ScalarSystemDeployScript is BaseScript {
         if (address(oracleProxy) == ZERO_ADDRESS) revert NotDeployed();
         if (vault != ZERO_ADDRESS) revert AlreadyDeployed();
 
+        // Deploy DegenBox
+        degenBox = new DegenBox(IERC20(address(weth)));
+
         vaultFactory = new VaultFactory(address(degenBox), address(stableCoin));
         emit VaultFactoryDeployed(address(vaultFactory));
 
@@ -125,11 +128,6 @@ contract ScalarSystemDeployScript is BaseScript {
         vault = vaultFactory.createVault(initData);
 
         emit MarketDeployed(vault, address(sbtc), address(oracleProxy));
-
-        // Deploy DegenBox
-        degenBox = new DegenBox(IERC20(address(weth)));
-
-        // Deploy Master CauldronV4
 
         // Whitelist master contract
         degenBox.whitelistMasterContract(address(vaultFactory.masterContract()), true);
